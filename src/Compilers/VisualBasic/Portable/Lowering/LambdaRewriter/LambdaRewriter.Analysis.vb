@@ -130,7 +130,7 @@ Namespace Microsoft.CodeAnalysis.VisualBasic
             End Sub
 
             ''' <summary>
-            ''' Analyses method body that belongs to the given method symbol.
+            ''' Analyzes method body that belongs to the given method symbol.
             ''' </summary>
             Public Shared Function AnalyzeMethodBody(node As BoundBlock, method As MethodSymbol, symbolsCapturedWithoutCtor As ISet(Of Symbol), diagnostics As DiagnosticBag) As Analysis
                 Debug.Assert(Not node.HasErrors)
@@ -510,7 +510,7 @@ Namespace Microsoft.CodeAnalysis.VisualBasic
             ''' For performance reason we may not want to check if synthetic gotos are legal.
             ''' Those are the majority, but should not be ever illegal (how user would fix them?).
             ''' </summary>
-            Private Function MayParticipateInIllegalBranch(node As BoundGotoStatement) As Boolean
+            Private Shared Function MayParticipateInIllegalBranch(node As BoundGotoStatement) As Boolean
 #If DEBUG Then
                 ' Validate synthetic branches in debug too.
                 Return True

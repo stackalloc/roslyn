@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.CodeFixes.AddImport;
@@ -29,9 +30,10 @@ namespace Microsoft.CodeAnalysis.Editor.CSharp.UnitTests.Diagnostics.AddUsing
              string initialMarkup,
              string expected,
              bool systemSpecialCase,
-             int index = 0)
+             int index = 0,
+             object fixProviderData = null)
         {
-            await TestAsync(initialMarkup, expected, index, options: new Dictionary<OptionKey, object>
+            await TestAsync(initialMarkup, expected, index, fixProviderData: fixProviderData, options: new Dictionary<OptionKey, object>
             {
                 { new OptionKey(OrganizerOptions.PlaceSystemNamespaceFirst, LanguageNames.CSharp), systemSpecialCase }
             });
@@ -43,6 +45,30 @@ namespace Microsoft.CodeAnalysis.Editor.CSharp.UnitTests.Diagnostics.AddUsing
             await TestAsync(
 @"class Class { [|IDictionary|] Method() { Foo(); } }",
 @"using System.Collections; class Class { IDictionary Method() { Foo(); } }");
+        }
+
+        [Fact, Trait(Traits.Feature, Traits.Features.CodeActionsAddUsing)]
+        [WorkItem(11241, "https://github.com/dotnet/roslyn/issues/11241")]
+        public async Task TestAddImportWithCaseChange()
+        {
+            await TestAsync(
+@"namespace N1
+{
+    public class TextBox { }
+}
+
+class Class1 : [|Textbox|] { }
+",
+@"
+using N1;
+
+namespace N1
+{
+    public class TextBox { }
+}
+
+class Class1 : TextBox { }
+", priority: CodeActionPriority.Low);
         }
 
         [Fact, Trait(Traits.Feature, Traits.Features.CodeActionsAddUsing)]
@@ -2142,6 +2168,45 @@ namespace Namespace2
         }
     }
 }");
+        }
+
+        [WorkItem(5499, "https://github.com/dotnet/roslyn/issues/5499")]
+        [Fact, Trait(Traits.Feature, Traits.Features.CodeActionsAddUsing)]
+        public async Task TestFormattingForNamespaceUsings()
+        {
+            await TestAsync(
+@"namespace N
+{
+    using System;
+    using System.Collections.Generic;
+    using System.Linq;
+    using System.Text;
+
+    class Program
+    {
+        void Main()
+        {
+            [|Task<int>|]
+        }
+    }
+}",
+@"namespace N
+{
+    using System;
+    using System.Collections.Generic;
+    using System.Linq;
+    using System.Text;
+    using System.Threading.Tasks;
+
+    class Program
+    {
+        void Main()
+        {
+            Task<int>
+        }
+    }
+}",
+compareTokens: false);
         }
 
         public partial class AddUsingTestsWithAddImportDiagnosticProvider : AbstractCSharpDiagnosticProviderBasedUserDiagnosticTest

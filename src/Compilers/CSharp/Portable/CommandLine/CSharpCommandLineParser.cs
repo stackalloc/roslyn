@@ -1118,6 +1118,12 @@ namespace Microsoft.CodeAnalysis.CSharp
                 keyFileSearchPaths.Add(outputDirectory);
             }
 
+            // Public sign doesn't use the legacy search path settings
+            if (publicSign && !string.IsNullOrWhiteSpace(keyFileSetting))
+            {
+                keyFileSetting = ParseGenericPathToFile(keyFileSetting, diagnostics, baseDirectory);
+            }
+
             var parsedFeatures = CompilerOptionParseUtilities.ParseFeatures(features);
 
             string compilationName;
@@ -1722,11 +1728,6 @@ namespace Microsoft.CodeAnalysis.CSharp
         private static void UnimplementedSwitch(IList<Diagnostic> diagnostics, string switchName)
         {
             AddDiagnostic(diagnostics, ErrorCode.WRN_UnimplementedCommandLineSwitch, "/" + switchName);
-        }
-
-        private static void UnimplementedSwitchValue(IList<Diagnostic> diagnostics, string switchName, string value)
-        {
-            AddDiagnostic(diagnostics, ErrorCode.WRN_UnimplementedCommandLineSwitch, "/" + switchName + ":" + value);
         }
 
         internal override void GenerateErrorForNoFilesFoundInRecurse(string path, IList<Diagnostic> diagnostics)

@@ -2,14 +2,10 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.Text;
 using Microsoft.VisualStudio.Text;
-using Roslyn.Utilities;
 
 namespace Microsoft.CodeAnalysis.Text
 {
@@ -48,6 +44,11 @@ namespace Microsoft.CodeAnalysis.Text
         {
             var t = text as SnapshotSourceText;
             return t == null ? null : t.EditorSnapshot;
+        }
+
+        internal static TextLine AsTextLine(this ITextSnapshotLine line)
+        {
+            return line.Snapshot.AsText().Lines[line.LineNumber];
         }
 
         public static SourceText AsText(this ITextSnapshot textSnapshot)

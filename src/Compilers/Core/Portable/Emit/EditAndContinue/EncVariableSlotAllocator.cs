@@ -5,9 +5,9 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
+using System.Reflection.Metadata;
 using Microsoft.CodeAnalysis.CodeGen;
 using Microsoft.CodeAnalysis.Symbols;
-using Roslyn.Utilities;
 
 namespace Microsoft.CodeAnalysis.Emit
 {
@@ -130,7 +130,7 @@ namespace Microsoft.CodeAnalysis.Emit
             string nameOpt,
             SynthesizedLocalKind kind,
             LocalDebugId id,
-            uint pdbAttributes,
+            LocalVariableAttributes pdbAttributes,
             LocalSlotConstraints constraints,
             bool isDynamic,
             ImmutableArray<TypedConstant> dynamicTransformFlags)
@@ -177,9 +177,20 @@ namespace Microsoft.CodeAnalysis.Emit
 
         public override string PreviousStateMachineTypeName => _stateMachineTypeNameOpt;
 
-        public override bool TryGetPreviousHoistedLocalSlotIndex(SyntaxNode currentDeclarator, Cci.ITypeReference currentType, SynthesizedLocalKind synthesizedKind, LocalDebugId currentId, out int slotIndex)
+        public override bool TryGetPreviousHoistedLocalSlotIndex(
+            SyntaxNode currentDeclarator, 
+            Cci.ITypeReference currentType,
+            SynthesizedLocalKind synthesizedKind,
+            LocalDebugId currentId,
+            DiagnosticBag diagnostics, 
+            out int slotIndex)
         {
-            Debug.Assert(_hoistedLocalSlotsOpt != null);
+            // The previous method was not a state machine (it is allowed to change non-state machine to a state machine):
+            if (_hoistedLocalSlotsOpt == null)
+            {
+                slotIndex = -1;
+                return false;
+            }
 
             LocalDebugId previousId;
             if (!TryGetPreviousLocalId(currentDeclarator, currentId, out previousId))
@@ -205,9 +216,15 @@ namespace Microsoft.CodeAnalysis.Emit
         public override int PreviousHoistedLocalSlotCount => _hoistedLocalSlotCount;
         public override int PreviousAwaiterSlotCount => _awaiterCount;
 
-        public override bool TryGetPreviousAwaiterSlotIndex(Cci.ITypeReference currentType, out int slotIndex)
+        public override bool TryGetPreviousAwaiterSlotIndex(Cci.ITypeReference currentType, DiagnosticBag diagnostics, out int slotIndex)
         {
-            Debug.Assert(_awaiterMapOpt != null);
+            // The previous method was not a state machine (it is allowed to change non-state machine to a state machine):
+            if (_awaiterMapOpt == null)
+            {
+                slotIndex = -1;
+                return false;
+            }
+
             return _awaiterMapOpt.TryGetValue(_symbolMap.MapReference(currentType), out slotIndex);
         }
 

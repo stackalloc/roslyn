@@ -269,7 +269,15 @@ Namespace Microsoft.CodeAnalysis.Editor.VisualBasic.NavigationBar
                 Return Not p.IsWithEvents
             End If
 
-            Return symbol.Kind = SymbolKind.Event
+            If symbol.Kind = SymbolKind.Event Then
+                Return True
+            End If
+
+            If symbol.Kind = SymbolKind.Field AndAlso Not symbol.IsImplicitlyDeclared Then
+                Return True
+            End If
+
+            Return False
         End Function
 
         ''' <summary>
@@ -464,13 +472,7 @@ Namespace Microsoft.CodeAnalysis.Editor.VisualBasic.NavigationBar
                 symbol = symbols.CandidateSymbols(item.NavigationSymbolIndex.Value)
             End If
 
-            ' First figure out the location that we want to grab considering partial types
-            Dim location = symbol.Locations.FirstOrDefault(Function(l) l.SourceTree.Equals(document.GetSyntaxTreeAsync(cancellationToken).WaitAndGetResult(cancellationToken)))
-
-            If location Is Nothing Then
-                location = symbol.Locations.FirstOrDefault
-            End If
-
+            Dim location As Location = GetSourceNavigationLocation(document, symbol, cancellationToken)
             If location Is Nothing Then
                 Return Nothing
             End If
@@ -486,6 +488,19 @@ Namespace Microsoft.CodeAnalysis.Editor.VisualBasic.NavigationBar
             End If
 
             Return New VirtualTreePoint(location.SourceTree, location.SourceTree.GetText(cancellationToken), location.SourceSpan.Start)
+        End Function
+
+        Private Shared Function GetSourceNavigationLocation(document As Document, symbol As ISymbol, cancellationToken As CancellationToken) As Location
+            Dim sourceLocations = symbol.Locations.Where(Function(l) l.IsInSource)
+
+            ' First figure out the location that we want to grab considering partial types
+            Dim location = sourceLocations.FirstOrDefault(Function(l) l.SourceTree.Equals(document.GetSyntaxTreeAsync(cancellationToken).WaitAndGetResult(cancellationToken)))
+
+            If location Is Nothing Then
+                location = sourceLocations.FirstOrDefault
+            End If
+
+            Return location
         End Function
 
         Public Overrides Sub NavigateToItem(document As Document, item As NavigationBarItem, textView As ITextView, cancellationToken As CancellationToken)
@@ -504,7 +519,7 @@ Namespace Microsoft.CodeAnalysis.Editor.VisualBasic.NavigationBar
             Dim newDocument = generateCodeItem.GetGeneratedDocumentAsync(document, cancellationToken).WaitAndGetResult(cancellationToken)
             Dim generatedTree = newDocument.GetSyntaxRootAsync(cancellationToken).WaitAndGetResult(cancellationToken)
             Dim generatedNode = generatedTree.GetAnnotatedNodes(AbstractGenerateCodeItem.GeneratedSymbolAnnotation).Single().FirstAncestorOrSelf(Of MethodBlockBaseSyntax)
-            Dim indentSize = document.Project.Solution.Workspace.Options.GetOption(FormattingOptions.IndentationSize, LanguageNames.VisualBasic)
+            Dim indentSize = newDocument.Options.GetOption(FormattingOptions.IndentationSize)
             Dim navigationPoint = NavigationPointHelpers.GetNavigationPoint(generatedTree.GetText(text.Encoding), indentSize, generatedNode)
 
             Using transaction = New CaretPreservingEditTransaction(VBEditorResources.GenerateMember, textView, _textUndoHistoryRegistry, _editorOperationsFactoryService)

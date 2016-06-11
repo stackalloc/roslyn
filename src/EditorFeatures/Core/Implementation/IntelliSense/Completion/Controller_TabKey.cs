@@ -25,10 +25,13 @@ namespace Microsoft.CodeAnalysis.Editor.Implementation.IntelliSense.Completion
 
             if (sessionOpt == null)
             {
-                // The user may be trying to invoke snippets
+                // The user may be trying to invoke snippets in VB
+                var helper = GetCompletionHelper();
                 var completionService = GetCompletionService();
-                if (completionService != null &&
-                    completionService.SupportSnippetCompletionListOnTab &&
+
+                if (helper != null &&
+                    completionService != null &&
+                    helper.QuestionTabInvokesSnippetCompletion &&
                     TryInvokeSnippetCompletion(args, completionService))
                 {
                     // We've taken care of the tab. Don't send it to the buffer.
@@ -57,7 +60,7 @@ namespace Microsoft.CodeAnalysis.Editor.Implementation.IntelliSense.Completion
             }
         }
 
-        private bool TryInvokeSnippetCompletion(TabKeyCommandArgs args, ICompletionService completionService)
+        private bool TryInvokeSnippetCompletion(TabKeyCommandArgs args, CompletionService completionService)
         {
             var subjectBuffer = args.SubjectBuffer;
             var caretPoint = args.TextView.GetCaretPoint(subjectBuffer).Value.Position;
@@ -81,7 +84,7 @@ namespace Microsoft.CodeAnalysis.Editor.Implementation.IntelliSense.Completion
                         {
                             var textChange = new TextChange(TextSpan.FromBounds(caretPoint - 1, caretPoint), string.Empty);
                             workspace.ApplyTextChanges(documentId, textChange, CancellationToken.None);
-                            this.StartNewModelComputation(completionService, CompletionTriggerInfo.CreateSnippetTriggerInfo(), filterItems: false);
+                            this.StartNewModelComputation(completionService, new CompletionTrigger(CompletionTriggerKind.Snippets), filterItems: false);
                             return true;
                         }
                     }
@@ -133,19 +136,15 @@ namespace Microsoft.CodeAnalysis.Editor.Implementation.IntelliSense.Completion
                 return;
             }
 
-            var selectedItem = Controller.GetExternallyUsableCompletionItem(model.SelectedItem);
-
             // If the selected item is the builder, there's not actually any work to do to commit
-            if (selectedItem.IsBuilder)
+            if (model.SelectedItem.IsSuggestionModeItem)
             {
                 committed = true;
                 this.StopModelComputation();
                 return;
             }
 
-            var textChange = GetCompletionRules().GetTextChange(selectedItem);
-
-            Commit(selectedItem, textChange, model, null);
+            Commit(model.SelectedItem, model, commitChar: null);
             committed = true;
         }
     }

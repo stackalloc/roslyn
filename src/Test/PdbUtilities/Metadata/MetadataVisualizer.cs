@@ -10,7 +10,6 @@ using System.Linq;
 using System.Reflection.Metadata;
 using System.Reflection.Metadata.Ecma335;
 using System.Text;
-using Roslyn.Reflection.Metadata.Decoding;
 
 namespace Roslyn.Test.MetadataUtilities
 {
@@ -142,7 +141,7 @@ namespace Roslyn.Test.MetadataUtilities
             WriteLocalScope();
             WriteLocalVariable();
             WriteLocalConstant();
-            WriteLocalImport();
+            WriteImportScope();
             WriteCustomDebugInformation();
 
             // heaps:
@@ -1502,7 +1501,7 @@ namespace Roslyn.Test.MetadataUtilities
 
                 var entry = _reader.GetMethodDebugInformation(handle);
 
-                _writer.WriteLine($"{MetadataTokens.GetRowNumber(handle)}: {Token(() => entry.Document)} #{_reader.GetHeapOffset(entry.SequencePointsBlob):x}");
+                _writer.WriteLine($"{MetadataTokens.GetRowNumber(handle):x}: {Token(() => entry.Document)} #{_reader.GetHeapOffset(entry.SequencePointsBlob):x}");
 
                 if (entry.SequencePointsBlob.IsNil)
                 {
@@ -1716,7 +1715,7 @@ namespace Roslyn.Test.MetadataUtilities
             }
         }
 
-        private void WriteLocalImport()
+        public void WriteImportScope()
         {
             AddHeader(
                 "Parent",

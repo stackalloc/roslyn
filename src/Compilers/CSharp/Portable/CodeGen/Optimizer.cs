@@ -273,7 +273,7 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
             {
                 _localDefs.Free();
                 _localDefs = null;
-            }
+    }
 
             _pool?.Free(this);
         }
@@ -378,7 +378,7 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
         Box
     }
 
-    // Analyses the tree trying to figure which locals may live on stack.
+    // Analyzes the tree trying to figure which locals may live on stack.
     // It is a fairly delicate process and must be very familiar with how CodeGen works.
     // It is essentially a part of CodeGen.
     //
@@ -993,6 +993,16 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
                     }
 
                     break;
+
+                case BoundKind.Call:
+                    Debug.Assert(((BoundCall)lhs).Method.RefKind == RefKind.Ref, "only ref returning methods are assignable");
+                    Debug.Assert(node.RefKind == RefKind.None, "methods cannot be ref-assignable");
+                    return true;
+
+                case BoundKind.AssignmentOperator:
+                    Debug.Assert(((BoundAssignmentOperator)lhs).RefKind == RefKind.Ref, "only ref assignments are assignable");
+                    Debug.Assert(node.RefKind == RefKind.None, "assignments cannot be ref-assignable");
+                    return true;
             }
 
             Debug.Assert(node.RefKind == RefKind.None, "this is not something that can be assigned indirectly");
@@ -1403,11 +1413,14 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
         public override BoundNode VisitSwitchStatement(BoundSwitchStatement node)
         {
             Debug.Assert(EvalStackIsEmpty());
+
+            var preambleOpt = (BoundStatement)this.Visit(node.LoweredPreambleOpt);
+
             DeclareLocals(node.InnerLocals, 0);
 
             // switch needs a byval local or a parameter as a key.
             // if this is already a fitting local, let's keep it that way
-            BoundExpression boundExpression = node.BoundExpression;
+            BoundExpression boundExpression = node.Expression;
             if (boundExpression.Kind == BoundKind.Local)
             {
                 var localSym = ((BoundLocal)boundExpression).LocalSymbol;
@@ -1435,7 +1448,7 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
                 this.RecordLabel(breakLabel);
             }
 
-            var result = node.Update(boundExpression, node.ConstantTargetOpt, node.InnerLocals, switchSections, breakLabel, node.StringEquality);
+            var result = node.Update(preambleOpt, boundExpression, node.ConstantTargetOpt, node.InnerLocals, node.InnerLocalFunctions, switchSections, breakLabel, node.StringEquality);
 
             // implicit control flow
             EnsureOnlyEvalStack();
@@ -1476,13 +1489,8 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
         {
             EnsureOnlyEvalStack();
 
-            var local = node.LocalOpt;
             var exceptionSourceOpt = node.ExceptionSourceOpt;
-
-            if ((object)local != null)
-            {
-                DeclareLocal(local, stack: 0);
-            }
+            DeclareLocals(node.Locals, stack: 0);
 
             if (exceptionSourceOpt != null)
             {
@@ -1499,6 +1507,7 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
                 {
                     int prevStack = StackDepth();
                     exceptionSourceOpt = VisitExpression(exceptionSourceOpt, ExprContext.AssignmentTarget);
+                    _assignmentLocal = null; // not using this for exceptionSource
                     SetStackDepth(prevStack);
                 }
 
@@ -1526,7 +1535,7 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
             var boundBlock = (BoundBlock)this.Visit(node.Body);
             var exceptionTypeOpt = this.VisitType(node.ExceptionTypeOpt);
 
-            return node.Update(local, exceptionSourceOpt, exceptionTypeOpt, boundFilter, boundBlock, node.IsSynthesizedAsyncCatchAll);
+            return node.Update(node.Locals, exceptionSourceOpt, exceptionTypeOpt, boundFilter, boundBlock, node.IsSynthesizedAsyncCatchAll);
         }
 
         public override BoundNode VisitStackAllocArrayCreation(BoundStackAllocArrayCreation node)
@@ -1584,7 +1593,7 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
             // must not have locals on stack when returning
             EnsureOnlyEvalStack();
 
-            return node.Update(expressionOpt);
+            return node.Update(node.RefKind, expressionOpt);
         }
 
         // Ensures that there are no stack locals.
@@ -2027,7 +2036,7 @@ namespace Microsoft.CodeAnalysis.CSharp.CodeGen
             body = (BoundBlock)this.Visit(body);
             type = this.VisitType(type);
 
-            return node.Update(node.LocalOpt, exceptionSource, type, filter, body, node.IsSynthesizedAsyncCatchAll);
+            return node.Update(node.Locals, exceptionSource, type, filter, body, node.IsSynthesizedAsyncCatchAll);
         }
     }
 

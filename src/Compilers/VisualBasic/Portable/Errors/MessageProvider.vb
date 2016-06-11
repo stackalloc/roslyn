@@ -95,7 +95,7 @@ Namespace Microsoft.CodeAnalysis.VisualBasic
             Return New VBDiagnostic(ErrorFactory.ErrorInfo(CType(code, ERRID), args), location)
         End Function
 
-        Public Overrides Function ConvertSymbolToString(errorCode As Integer, symbol As ISymbol) As String
+        Public Overrides Function GetErrorDisplayString(symbol As ISymbol) As String
             ' show extra info for assembly if possible such as version, public key token etc.
             If symbol.Kind = SymbolKind.Assembly OrElse symbol.Kind = SymbolKind.Namespace Then
                 Return symbol.ToString()
@@ -236,6 +236,12 @@ Namespace Microsoft.CodeAnalysis.VisualBasic
             End Get
         End Property
 
+        Public Overrides ReadOnly Property ERR_MutuallyExclusiveOptions As Integer
+            Get
+                Return ERRID.ERR_MutuallyExclusiveOptions
+            End Get
+        End Property
+
         ' emit options:
 
         Public Overrides ReadOnly Property ERR_InvalidDebugInformationFormat As Integer
@@ -348,6 +354,12 @@ Namespace Microsoft.CodeAnalysis.VisualBasic
         Public Overrides ReadOnly Property ERR_PublicKeyContainerFailure As Integer
             Get
                 Return ERRID.ERR_PublicKeyContainerFailure
+            End Get
+        End Property
+
+        Public Overrides ReadOnly Property ERR_OptionMustBeAbsolutePath As Integer
+            Get
+                Return ERRID.ERR_OptionMustBeAbsolutePath
             End Get
         End Property
 
@@ -478,6 +490,24 @@ Namespace Microsoft.CodeAnalysis.VisualBasic
         Public Overrides ReadOnly Property ERR_TooManyUserStrings As Integer
             Get
                 Return ERRID.ERR_TooManyUserStrings
+            End Get
+        End Property
+
+        Public Overrides ReadOnly Property ERR_PeWritingFailure As Integer
+            Get
+                Return ERRID.ERR_PeWritingFailure
+            End Get
+        End Property
+
+        Public Overrides ReadOnly Property ERR_ModuleEmitFailure As Integer
+            Get
+                Return ERRID.ERR_ModuleEmitFailure
+            End Get
+        End Property
+
+        Public Overrides ReadOnly Property ERR_EncUpdateFailedMissingAttribute As Integer
+            Get
+                Return ERRID.ERR_EncUpdateFailedMissingAttribute
             End Get
         End Property
     End Class

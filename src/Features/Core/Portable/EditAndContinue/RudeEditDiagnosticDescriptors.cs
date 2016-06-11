@@ -80,7 +80,7 @@ namespace Microsoft.CodeAnalysis.EditAndContinue
             { GetDescriptorPair(RudeEditKind.PartiallyExecutedActiveStatementDelete,    FeaturesResources.AnActiveStatementHasBeenRemoved) },
             { GetDescriptorPair(RudeEditKind.InsertFile,                                FeaturesResources.AddingANewFile) },
             { GetDescriptorPair(RudeEditKind.UpdatingStateMachineMethodAroundActiveStatement, FeaturesResources.UpdatingStateMachineMethodAroundActive) },
-
+            { GetDescriptorPair(RudeEditKind.UpdatingStateMachineMethodMissingAttribute, FeaturesResources.UpdatingStateMachineMethodMissingAttribute) },
             { GetDescriptorPair(RudeEditKind.RUDE_EDIT_COMPLEX_QUERY_EXPRESSION,        FeaturesResources.ModifyingAWhichContainsComplexQuery) },
 
             // VB specific,

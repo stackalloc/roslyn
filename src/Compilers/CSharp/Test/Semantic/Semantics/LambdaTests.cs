@@ -1099,6 +1099,184 @@ class C
             Assert.Equal(CandidateReason.None, symbolInfo.CandidateReason);
         }
 
+        [Fact]
+        public void RefLambdaInferenceMethodArgument()
+        {
+            var text = @"
+delegate ref int D();
+
+class C
+{
+    static void MD(D d) { }
+
+    static int i = 0;
+    static void M()
+    {
+        MD(() => ref i);
+        MD(() => { return ref i; });
+        MD(delegate { return ref i; });
+    }
+}
+";
+
+            CreateExperimentalCompilationWithMscorlib45(text).VerifyDiagnostics();
+        }
+
+
+        [Fact]
+        public void RefLambdaInferenceDelegateCreation()
+        {
+            var text = @"
+delegate ref int D();
+
+class C
+{
+    static int i = 0;
+    static void M()
+    {
+        var d = new D(() => ref i);
+        d = new D(() => { return ref i; });
+        d = new D(delegate { return ref i; });
+    }
+}
+";
+
+            CreateExperimentalCompilationWithMscorlib45(text).VerifyDiagnostics();
+        }
+
+        [Fact]
+        public void RefLambdaInferenceOverloadedDelegateType()
+        {
+            var text = @"
+delegate ref int D();
+delegate int E();
+
+class C
+{
+    static void M(D d) { }
+    static void M(E e) { }
+
+    static int i = 0;
+    static void M()
+    {
+        M(() => ref i);
+        M(() => { return ref i; });
+        M(delegate { return ref i; });
+        M(() => i);
+        M(() => { return i; });
+        M(delegate { return i; });
+    }
+}
+";
+
+            CreateExperimentalCompilationWithMscorlib45(text).VerifyDiagnostics();
+        }
+
+        [Fact]
+        public void RefLambdaInferenceArgumentBadRefReturn()
+        {
+            var text = @"
+delegate int E();
+
+class C
+{
+    static void ME(E e) { }
+
+    static int i = 0;
+    static void M()
+    {
+        ME(() => ref i);
+        ME(() => { return ref i; });
+        ME(delegate { return ref i; });
+    }
+}
+";
+
+            CreateExperimentalCompilationWithMscorlib45(text).VerifyDiagnostics(
+                // (11,22): error CS8083: By-reference returns may only be used in by-reference returning methods.
+                //         ME(() => ref i);
+                Diagnostic(ErrorCode.ERR_MustNotHaveRefReturn, "i").WithLocation(11, 22),
+                // (12,20): error CS8083: By-reference returns may only be used in by-reference returning methods.
+                //         ME(() => { return ref i; });
+                Diagnostic(ErrorCode.ERR_MustNotHaveRefReturn, "return").WithLocation(12, 20),
+                // (13,23): error CS8083: By-reference returns may only be used in by-reference returning methods.
+                //         ME(delegate { return ref i; });
+                Diagnostic(ErrorCode.ERR_MustNotHaveRefReturn, "return").WithLocation(13, 23));
+        }
+
+        [Fact]
+        public void RefLambdaInferenceDelegateCreationBadRefReturn()
+        {
+            var text = @"
+delegate int E();
+
+class C
+{
+    static int i = 0;
+    static void M()
+    {
+        var e = new E(() => ref i);
+        e = new E(() => { return ref i; });
+        e = new E(delegate { return ref i; });
+    }
+}
+";
+
+            CreateExperimentalCompilationWithMscorlib45(text).VerifyDiagnostics(
+                // (9,33): error CS8083: By-reference returns may only be used in by-reference returning methods.
+                //         var e = new E(() => ref i);
+                Diagnostic(ErrorCode.ERR_MustNotHaveRefReturn, "i").WithLocation(9, 33),
+                // (10,27): error CS8083: By-reference returns may only be used in by-reference returning methods.
+                //         e = new E(() => { return ref i; });
+                Diagnostic(ErrorCode.ERR_MustNotHaveRefReturn, "return").WithLocation(10, 27),
+                // (11,30): error CS8083: By-reference returns may only be used in by-reference returning methods.
+                //         e = new E(delegate { return ref i; });
+                Diagnostic(ErrorCode.ERR_MustNotHaveRefReturn, "return").WithLocation(11, 30));
+        }
+
+        [Fact]
+        public void RefLambdaInferenceMixedByValueAndByRefReturns()
+        {
+            var text = @"
+delegate ref int D();
+delegate int E();
+
+class C
+{
+    static void MD(D e) { }
+    static void ME(E e) { }
+
+    static int i = 0;
+    static void M()
+    {
+        MD(() => {
+            if (i == 0)
+            {
+                return ref i;
+            }
+            return i;
+        });
+        ME(() => {
+            if (i == 0)
+            {
+                return ref i;
+            }
+            return i;
+        });
+    }
+}
+";
+
+            CreateExperimentalCompilationWithMscorlib45(text).VerifyDiagnostics(
+                // (18,13): error CS8084: By-value returns may only be used in by-value returning methods.
+                //             return i;
+                Diagnostic(ErrorCode.ERR_MustHaveRefReturn, "return").WithLocation(18, 13),
+                // (23,17): error CS8083: By-reference returns may only be used in by-reference returning methods.
+                //                 return ref i;
+                Diagnostic(ErrorCode.ERR_MustNotHaveRefReturn, "return").WithLocation(23, 17));
+        }
+
+        [WorkItem(1112875, "DevDiv")]
         [WorkItem(1112875, "http://vstfdevdiv:8080/DevDiv2/DevDiv/_workitems/edit/1112875")]
         [Fact]
         public void Bug1112875_1()
@@ -1558,6 +1736,232 @@ class C { C() { Unbound2.Select(x => Unbound1); } }";
     // class C { C() { Unbound2.Select(x => Unbound1); } }
     Diagnostic(ErrorCode.ERR_NameNotInContext, "Unbound1").WithArguments("Unbound1").WithLocation(2, 38)
                 );
+        }
+
+        [Fact]
+        [WorkItem(4480, "https://github.com/dotnet/roslyn/issues/4480")]
+        public void TestLambdaWithError06()
+        {
+            var source =
+@"class Program
+{
+    static void Main(string[] args)
+    {
+        // completion should work even in a syntactically invalid lambda
+        var handler = new MyDelegateType((s, e) => { e. });
+    }
+}
+
+public delegate void MyDelegateType(
+    object sender,
+    MyArgumentType e
+);
+
+public class MyArgumentType
+{
+    public int SomePublicMember;
+}";
+            var compilation = CreateCompilationWithMscorlibAndSystemCore(source)
+                .VerifyDiagnostics(
+                //         var handler = new MyDelegateType((s, e) => { e. });
+                Diagnostic(ErrorCode.ERR_IdentifierExpected, "}").WithLocation(6, 57),
+                // (6,57): error CS1002: ; expected
+                //         var handler = new MyDelegateType((s, e) => { e. });
+                Diagnostic(ErrorCode.ERR_SemicolonExpected, "}").WithLocation(6, 57)
+                );
+            var tree = compilation.SyntaxTrees[0];
+            var sm = compilation.GetSemanticModel(tree);
+            var lambda = tree.GetCompilationUnitRoot().DescendantNodes().OfType<LambdaExpressionSyntax>().Single();
+            var eReference = lambda.Body.DescendantNodes().OfType<IdentifierNameSyntax>().First();
+            Assert.Equal("e", eReference.ToString());
+            var typeInfo = sm.GetTypeInfo(eReference);
+            Assert.Equal("MyArgumentType", typeInfo.Type.Name);
+            Assert.Equal(TypeKind.Class, typeInfo.Type.TypeKind);
+            Assert.NotEmpty(typeInfo.Type.GetMembers("SomePublicMember"));
+        }
+
+        [Fact]
+        [WorkItem(11053, "https://github.com/dotnet/roslyn/issues/11053")]
+        [WorkItem(11358, "https://github.com/dotnet/roslyn/issues/11358")]
+        public void TestLambdaWithError07()
+        {
+            var source =
+@"using System;
+using System.Collections.Generic;
+
+public static class Program
+{
+    public static void Main()
+    {
+        var parameter = new List<string>();
+        var result = parameter.FirstOrDefault(x => x. );
+    }
+}
+
+public static class Enumerable
+{
+    public static TSource FirstOrDefault<TSource>(this IEnumerable<TSource> source, TSource defaultValue)
+    {
+        return default(TSource);
+    }
+
+    public static TSource FirstOrDefault<TSource>(this IEnumerable<TSource> source, Func<TSource, bool> predicate, TSource defaultValue)
+    {
+        return default(TSource);
+    }
+}";
+            var compilation = CreateCompilationWithMscorlibAndSystemCore(source).VerifyDiagnostics(
+                // (9,55): error CS1001: Identifier expected
+                //         var result = parameter.FirstOrDefault(x => x. );
+                Diagnostic(ErrorCode.ERR_IdentifierExpected, ")").WithLocation(9, 55)
+                );
+            var tree = compilation.SyntaxTrees[0];
+            var sm = compilation.GetSemanticModel(tree);
+            var lambda = tree.GetCompilationUnitRoot().DescendantNodes().OfType<LambdaExpressionSyntax>().Single();
+            var eReference = lambda.Body.DescendantNodes().OfType<IdentifierNameSyntax>().First();
+            Assert.Equal("x", eReference.ToString());
+            var typeInfo = sm.GetTypeInfo(eReference);
+            Assert.Equal(TypeKind.Class, typeInfo.Type.TypeKind);
+            Assert.Equal("String", typeInfo.Type.Name);
+            Assert.NotEmpty(typeInfo.Type.GetMembers("Replace"));
+        }
+
+        [Fact]
+        [WorkItem(11053, "https://github.com/dotnet/roslyn/issues/11053")]
+        [WorkItem(11358, "https://github.com/dotnet/roslyn/issues/11358")]
+        public void TestLambdaWithError08()
+        {
+            var source =
+@"using System;
+using System.Collections.Generic;
+
+public static class Program
+{
+    public static void Main()
+    {
+        var parameter = new List<string>();
+        var result = parameter.FirstOrDefault(x => x. );
+    }
+}
+
+public static class Enumerable
+{
+    public static TSource FirstOrDefault<TSource>(this IEnumerable<TSource> source, params TSource[] defaultValue)
+    {
+        return default(TSource);
+    }
+
+    public static TSource FirstOrDefault<TSource>(this IEnumerable<TSource> source, Func<TSource, bool> predicate, params TSource[] defaultValue)
+    {
+        return default(TSource);
+}
+}";
+            var compilation = CreateCompilationWithMscorlibAndSystemCore(source).VerifyDiagnostics(
+                // (9,55): error CS1001: Identifier expected
+                //         var result = parameter.FirstOrDefault(x => x. );
+                Diagnostic(ErrorCode.ERR_IdentifierExpected, ")").WithLocation(9, 55)
+                );
+            var tree = compilation.SyntaxTrees[0];
+            var sm = compilation.GetSemanticModel(tree);
+            var lambda = tree.GetCompilationUnitRoot().DescendantNodes().OfType<LambdaExpressionSyntax>().Single();
+            var eReference = lambda.Body.DescendantNodes().OfType<IdentifierNameSyntax>().First();
+            Assert.Equal("x", eReference.ToString());
+            var typeInfo = sm.GetTypeInfo(eReference);
+            Assert.Equal(TypeKind.Class, typeInfo.Type.TypeKind);
+            Assert.Equal("String", typeInfo.Type.Name);
+            Assert.NotEmpty(typeInfo.Type.GetMembers("Replace"));
+        }
+
+        [Fact]
+        [WorkItem(11053, "https://github.com/dotnet/roslyn/issues/11053")]
+        [WorkItem(11358, "https://github.com/dotnet/roslyn/issues/11358")]
+        public void TestLambdaWithError09()
+        {
+            var source =
+@"using System;
+
+public static class Program
+{
+    public static void Main()
+    {
+        var parameter = new MyList<string>();
+        var result = parameter.FirstOrDefault(x => x. );
+    }
+}
+
+public class MyList<TSource>
+{
+    public TSource FirstOrDefault(TSource defaultValue)
+    {
+        return default(TSource);
+    }
+
+    public TSource FirstOrDefault(Func<TSource, bool> predicate, TSource defaultValue)
+    {
+        return default(TSource);
+    }
+}
+";
+            var compilation = CreateCompilationWithMscorlibAndSystemCore(source).VerifyDiagnostics(
+                // (8,55): error CS1001: Identifier expected
+                //         var result = parameter.FirstOrDefault(x => x. );
+                Diagnostic(ErrorCode.ERR_IdentifierExpected, ")").WithLocation(8, 55)
+                );
+            var tree = compilation.SyntaxTrees[0];
+            var sm = compilation.GetSemanticModel(tree);
+            var lambda = tree.GetCompilationUnitRoot().DescendantNodes().OfType<LambdaExpressionSyntax>().Single();
+            var eReference = lambda.Body.DescendantNodes().OfType<IdentifierNameSyntax>().First();
+            Assert.Equal("x", eReference.ToString());
+            var typeInfo = sm.GetTypeInfo(eReference);
+            Assert.Equal(TypeKind.Class, typeInfo.Type.TypeKind);
+            Assert.Equal("String", typeInfo.Type.Name);
+            Assert.NotEmpty(typeInfo.Type.GetMembers("Replace"));
+        }
+
+        [Fact]
+        [WorkItem(11053, "https://github.com/dotnet/roslyn/issues/11053")]
+        [WorkItem(11358, "https://github.com/dotnet/roslyn/issues/11358")]
+        public void TestLambdaWithError10()
+        {
+            var source =
+@"using System;
+
+public static class Program
+{
+    public static void Main()
+    {
+        var parameter = new MyList<string>();
+        var result = parameter.FirstOrDefault(x => x. );
+    }
+}
+
+public class MyList<TSource>
+{
+    public TSource FirstOrDefault(params TSource[] defaultValue)
+    {
+        return default(TSource);
+    }
+
+    public TSource FirstOrDefault(Func<TSource, bool> predicate, params TSource[] defaultValue)
+    {
+        return default(TSource);
+    }
+}
+";
+            var compilation = CreateCompilationWithMscorlibAndSystemCore(source).VerifyDiagnostics(
+                // (8,55): error CS1001: Identifier expected
+                //         var result = parameter.FirstOrDefault(x => x. );
+                Diagnostic(ErrorCode.ERR_IdentifierExpected, ")").WithLocation(8, 55)
+                );
+            var tree = compilation.SyntaxTrees[0];
+            var sm = compilation.GetSemanticModel(tree);
+            var lambda = tree.GetCompilationUnitRoot().DescendantNodes().OfType<LambdaExpressionSyntax>().Single();
+            var eReference = lambda.Body.DescendantNodes().OfType<IdentifierNameSyntax>().First();
+            Assert.Equal("x", eReference.ToString());
+            var typeInfo = sm.GetTypeInfo(eReference);
+            Assert.Equal(TypeKind.Class, typeInfo.Type.TypeKind);
+            Assert.Equal("String", typeInfo.Type.Name);
+            Assert.NotEmpty(typeInfo.Type.GetMembers("Replace"));
         }
     }
 }

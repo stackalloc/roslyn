@@ -65,6 +65,24 @@ Namespace Microsoft.VisualStudio.LanguageServices.VisualBasic
         End Property
         
         '''<summary>
+        '''  Looks up a localized string similar to Do not prefer &apos;Me.&apos;.
+        '''</summary>
+        Friend Shared ReadOnly Property DoNotPreferMe() As String
+            Get
+                Return ResourceManager.GetString("DoNotPreferMe", resourceCulture)
+            End Get
+        End Property
+        
+        '''<summary>
+        '''  Looks up a localized string similar to Enter key behavior:.
+        '''</summary>
+        Friend Shared ReadOnly Property Enter_key_behavior_Title() As String
+            Get
+                Return ResourceManager.GetString("Enter_key_behavior_Title", resourceCulture)
+            End Get
+        End Property
+        
+        '''<summary>
         '''  Looks up a localized string similar to Insert Snippet.
         '''</summary>
         Friend Shared ReadOnly Property InsertSnippet() As String
@@ -101,6 +119,15 @@ Namespace Microsoft.VisualStudio.LanguageServices.VisualBasic
         End Property
         
         '''<summary>
+        '''  Looks up a localized string similar to _Always add new line on enter.
+        '''</summary>
+        Friend Shared ReadOnly Property Option_Always_add_new_line_on_enter() As String
+            Get
+                Return ResourceManager.GetString("Option_Always_add_new_line_on_enter", resourceCulture)
+            End Get
+        End Property
+        
+        '''<summary>
         '''  Looks up a localized string similar to Automatic _insertion of Interface and MustOverride members.
         '''</summary>
         Friend Shared ReadOnly Property Option_AutomaticInsertionOfInterfaceAndMustOverrideMembers() As String
@@ -115,6 +142,15 @@ Namespace Microsoft.VisualStudio.LanguageServices.VisualBasic
         Friend Shared ReadOnly Property Option_ClosedFileDiagnostics() As String
             Get
                 Return ResourceManager.GetString("Option_ClosedFileDiagnostics", resourceCulture)
+            End Get
+        End Property
+        
+        '''<summary>
+        '''  Looks up a localized string similar to Completion Lists.
+        '''</summary>
+        Friend Shared ReadOnly Property Option_CompletionLists() As String
+            Get
+                Return ResourceManager.GetString("Option_CompletionLists", resourceCulture)
             End Get
         End Property
         
@@ -218,6 +254,15 @@ Namespace Microsoft.VisualStudio.LanguageServices.VisualBasic
         End Property
         
         '''<summary>
+        '''  Looks up a localized string similar to _Highlight matching portions of completion list items.
+        '''</summary>
+        Friend Shared ReadOnly Property Option_Highlight_matching_portions_of_completion_list_items() As String
+            Get
+                Return ResourceManager.GetString("Option_Highlight_matching_portions_of_completion_list_items", resourceCulture)
+            End Get
+        End Property
+        
+        '''<summary>
         '''  Looks up a localized string similar to Highlighting.
         '''</summary>
         Friend Shared ReadOnly Property Option_Highlighting() As String
@@ -227,11 +272,38 @@ Namespace Microsoft.VisualStudio.LanguageServices.VisualBasic
         End Property
         
         '''<summary>
+        '''  Looks up a localized string similar to Import Directives.
+        '''</summary>
+        Friend Shared ReadOnly Property Option_Import_Directives() As String
+            Get
+                Return ResourceManager.GetString("Option_Import_Directives", resourceCulture)
+            End Get
+        End Property
+        
+        '''<summary>
         '''  Looks up a localized string similar to _Navigate to Object Browser for symbols defined in metadata.
         '''</summary>
         Friend Shared ReadOnly Property Option_NavigateToObjectBrowser() As String
             Get
                 Return ResourceManager.GetString("Option_NavigateToObjectBrowser", resourceCulture)
+            End Get
+        End Property
+        
+        '''<summary>
+        '''  Looks up a localized string similar to _Never add new line on enter.
+        '''</summary>
+        Friend Shared ReadOnly Property Option_Never_add_new_line_on_enter() As String
+            Get
+                Return ResourceManager.GetString("Option_Never_add_new_line_on_enter", resourceCulture)
+            End Get
+        End Property
+        
+        '''<summary>
+        '''  Looks up a localized string similar to _Only add new line on enter after end of fully typed word.
+        '''</summary>
+        Friend Shared ReadOnly Property Option_Only_add_new_line_on_enter_with_whole_word() As String
+            Get
+                Return ResourceManager.GetString("Option_Only_add_new_line_on_enter_with_whole_word", resourceCulture)
             End Get
         End Property
         
@@ -290,11 +362,56 @@ Namespace Microsoft.VisualStudio.LanguageServices.VisualBasic
         End Property
         
         '''<summary>
-        '''  Looks up a localized string similar to Show preview for _rename tracking.
+        '''  Looks up a localized string similar to _Place &apos;System&apos; directives first when sorting imports.
+        '''</summary>
+        Friend Shared ReadOnly Property Option_PlaceSystemNamespaceFirst() As String
+            Get
+                Return ResourceManager.GetString("Option_PlaceSystemNamespaceFirst", resourceCulture)
+            End Get
+        End Property
+        
+        '''<summary>
+        '''  Looks up a localized string similar to Show preview for rename _tracking.
         '''</summary>
         Friend Shared ReadOnly Property Option_RenameTrackingPreview() As String
             Get
                 Return ResourceManager.GetString("Option_RenameTrackingPreview", resourceCulture)
+            End Get
+        End Property
+        
+        '''<summary>
+        '''  Looks up a localized string similar to Show completion item _filters.
+        '''</summary>
+        Friend Shared ReadOnly Property Option_Show_completion_item_filters() As String
+            Get
+                Return ResourceManager.GetString("Option_Show_completion_item_filters", resourceCulture)
+            End Get
+        End Property
+        
+        '''<summary>
+        '''  Looks up a localized string similar to Suggest imports for types in _NuGet packages.
+        '''</summary>
+        Friend Shared ReadOnly Property Option_Suggest_imports_for_types_in_NuGet_packages() As String
+            Get
+                Return ResourceManager.GetString("Option_Suggest_imports_for_types_in_NuGet_packages", resourceCulture)
+            End Get
+        End Property
+        
+        '''<summary>
+        '''  Looks up a localized string similar to Suggest imports for types in _reference assemblies.
+        '''</summary>
+        Friend Shared ReadOnly Property Option_Suggest_imports_for_types_in_reference_assemblies() As String
+            Get
+                Return ResourceManager.GetString("Option_Suggest_imports_for_types_in_reference_assemblies", resourceCulture)
+            End Get
+        End Property
+        
+        '''<summary>
+        '''  Looks up a localized string similar to predefined type preferences:.
+        '''</summary>
+        Friend Shared ReadOnly Property PredefinedTypesGroupTitle() As String
+            Get
+                Return ResourceManager.GetString("PredefinedTypesGroupTitle", resourceCulture)
             End Get
         End Property
         
@@ -317,11 +434,56 @@ Namespace Microsoft.VisualStudio.LanguageServices.VisualBasic
         End Property
         
         '''<summary>
-        '''  Looks up a localized string similar to Qualify member access with &apos;Me&apos;.
+        '''  Looks up a localized string similar to Prefer &apos;Me.&apos;.
         '''</summary>
-        Friend Shared ReadOnly Property QualifyMemberAccessWithMe() As String
+        Friend Shared ReadOnly Property PreferMe() As String
             Get
-                Return ResourceManager.GetString("QualifyMemberAccessWithMe", resourceCulture)
+                Return ResourceManager.GetString("PreferMe", resourceCulture)
+            End Get
+        End Property
+        
+        '''<summary>
+        '''  Looks up a localized string similar to Qualify event access with &apos;Me&apos;.
+        '''</summary>
+        Friend Shared ReadOnly Property QualifyEventAccessWithMe() As String
+            Get
+                Return ResourceManager.GetString("QualifyEventAccessWithMe", resourceCulture)
+            End Get
+        End Property
+        
+        '''<summary>
+        '''  Looks up a localized string similar to Qualify field access with &apos;Me&apos;.
+        '''</summary>
+        Friend Shared ReadOnly Property QualifyFieldAccessWithMe() As String
+            Get
+                Return ResourceManager.GetString("QualifyFieldAccessWithMe", resourceCulture)
+            End Get
+        End Property
+        
+        '''<summary>
+        '''  Looks up a localized string similar to &apos;Me.&apos; preferences.
+        '''</summary>
+        Friend Shared ReadOnly Property QualifyGroupTitle() As String
+            Get
+                Return ResourceManager.GetString("QualifyGroupTitle", resourceCulture)
+            End Get
+        End Property
+        
+        '''<summary>
+        '''  Looks up a localized string similar to Qualify method access with &apos;Me&apos;.
+        '''</summary>
+        Friend Shared ReadOnly Property QualifyMethodAccessWithMe() As String
+            Get
+                Return ResourceManager.GetString("QualifyMethodAccessWithMe", resourceCulture)
+            End Get
+        End Property
+        
+        '''<summary>
+        '''  Looks up a localized string similar to Qualify property access with &apos;Me&apos;.
+        '''</summary>
+        Friend Shared ReadOnly Property QualifyPropertyAccessWithMe() As String
+            Get
+                Return ResourceManager.GetString("QualifyPropertyAccessWithMe", resourceCulture)
             End Get
         End Property
     End Class

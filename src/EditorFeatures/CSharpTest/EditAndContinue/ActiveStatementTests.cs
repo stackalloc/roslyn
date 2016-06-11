@@ -1719,18 +1719,18 @@ class C
             string src2 = @"
 class C
 {
-    <AS:1>public static readonly int a = F(1);</AS:1>
+    <AS:1>public static readonly int <TS:1>a = F(1)</TS:1>;</AS:1>
 
     public C() {}
 
     public static int F(int a)
     {
-        <AS:0>return a + 1;</AS:0> 
+        <TS:0><AS:0>return a + 1;</AS:0></TS:0>
     }
 
     static void Main(string[] args)
     {
-        <AS:2>C c = new C();</AS:2>
+        <TS:2><AS:2>C c = new C();</AS:2></TS:2>
     }
 }";
             var edits = GetTopEdits(src1, src2);
@@ -7856,6 +7856,76 @@ class C
             edits.VerifyRudeDiagnostics(active);
         }
 
+        [Fact]
+        public void AsyncMethodEdit_Semantics()
+        {
+            string src1 = @"
+using System;
+using System.Threading.Tasks;
+
+class C
+{
+    static async Task<int> F()
+    {
+        Console.WriteLine(1);
+        return await Task.FromResult(1);
+    }
+}
+";
+            string src2 = @"
+using System;
+using System.Threading.Tasks;
+
+class C
+{
+    static async Task<int> F()
+    {
+        Console.WriteLine(2);
+        return await Task.FromResult(1);
+    }
+}
+";
+            var edits = GetTopEdits(src1, src2);
+            var active = GetActiveStatements(src1, src2);
+
+            edits.VerifySemanticDiagnostics();
+        }
+
+        [Fact]
+        public void IteratorMethodEdit_Semantics()
+        {
+            string src1 = @"
+using System;
+using System.Collections.Generic;
+
+class C
+{
+    static IEnumerable<int> F()
+    {
+        Console.WriteLine(1);
+        yield return 1;
+    }
+}
+";
+            string src2 = @"
+using System;
+using System.Collections.Generic;
+
+class C
+{
+    static IEnumerable<int> F()
+    {
+        Console.WriteLine(2);
+        yield return 2;
+    }
+}
+";
+            var edits = GetTopEdits(src1, src2);
+            var active = GetActiveStatements(src1, src2);
+
+            edits.VerifySemanticDiagnostics();
+        }
+
         #endregion
 
         #region Misplaced AS 
@@ -7879,6 +7949,52 @@ class C
     {
         <AS:0>return a;</AS:0> 
         <AS:2>return a;</AS:2> 
+    }
+}";
+            var edits = GetTopEdits(src1, src2);
+            var active = GetActiveStatements(src1, src2);
+
+            edits.VerifyRudeDiagnostics(active);
+        }
+
+        [Fact]
+        public void MisplacedActiveStatement2()
+        {
+            string src1 = @"
+class C
+{
+    static <AS:0>void</AS:0> Main(string[] args)
+    {
+    }
+}";
+            string src2 = @"
+class C
+{
+    static void Main(string[] args)
+    <AS:0>{</AS:0>
+    }
+}";
+            var edits = GetTopEdits(src1, src2);
+            var active = GetActiveStatements(src1, src2);
+
+            edits.VerifyRudeDiagnostics(active);
+        }
+
+        [Fact]
+        public void MisplacedTrackingSpan1()
+        {
+            string src1 = @"
+class C
+{
+    static <AS:0>void</AS:0> Main(string[] args)
+    {
+    }
+}";
+            string src2 = @"
+class C
+{
+    static <TS:0>void</TS:0> Main(string[] args)
+    <AS:0>{</AS:0>
     }
 }";
             var edits = GetTopEdits(src1, src2);

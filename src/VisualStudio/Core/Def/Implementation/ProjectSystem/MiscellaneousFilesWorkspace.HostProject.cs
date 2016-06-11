@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using EnvDTE;
 using Microsoft.CodeAnalysis;
@@ -11,7 +12,7 @@ namespace Microsoft.VisualStudio.LanguageServices.Implementation.ProjectSystem
 {
     internal partial class MiscellaneousFilesWorkspace
     {
-        private class HostProject : IVisualStudioHostProject
+        private sealed class HostProject : IVisualStudioHostProject
         {
             public ProjectId Id { get; }
             public string Language { get; }
@@ -46,7 +47,7 @@ namespace Microsoft.VisualStudio.LanguageServices.Implementation.ProjectSystem
 
             public ProjectInfo CreateProjectInfoForCurrentState()
             {
-                return ProjectInfo.Create(
+                var info = ProjectInfo.Create(
                     this.Id,
                     _version,
                     name: ServicesVSResources.MiscellaneousFiles,
@@ -60,6 +61,10 @@ namespace Microsoft.VisualStudio.LanguageServices.Implementation.ProjectSystem
                     metadataReferences: _metadataReferences,
                     isSubmission: false,
                     hostObjectType: null);
+
+                // misc project will never be fully loaded since, by defintion, it won't know
+                // what the full set of information is.
+                return info.WithHasAllInformation(hasAllInformation: false);
             }
 
             public Microsoft.VisualStudio.Shell.Interop.IVsHierarchy Hierarchy => null;
@@ -108,6 +113,11 @@ namespace Microsoft.VisualStudio.LanguageServices.Implementation.ProjectSystem
             public IReadOnlyList<string> GetFolderNames(uint documentItemID)
             {
                 return SpecializedCollections.EmptyReadOnlyList<string>();
+            }
+
+            public void UpdateGeneratedDocuments(ImmutableArray<DocumentInfo> documentsRemoved, ImmutableArray<DocumentInfo> documentsAdded)
+            {
+                throw new NotImplementedException();
             }
         }
     }

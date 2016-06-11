@@ -2304,6 +2304,15 @@ Namespace Microsoft.CodeAnalysis.VisualBasic.VBFeaturesResources
         End Property
         
         '''<summary>
+        '''  Looks up a localized string similar to Properties.
+        '''</summary>
+        Friend ReadOnly Property Properties() As String
+            Get
+                Return ResourceManager.GetString("Properties", resourceCulture)
+            End Get
+        End Property
+        
+        '''<summary>
         '''  Looks up a localized string similar to property accessor.
         '''</summary>
         Friend ReadOnly Property PropertyAccessor() As String
@@ -2419,6 +2428,15 @@ Namespace Microsoft.CodeAnalysis.VisualBasic.VBFeaturesResources
         Friend ReadOnly Property RemovehandlerStatement() As String
             Get
                 Return ResourceManager.GetString("RemovehandlerStatement", resourceCulture)
+            End Get
+        End Property
+        
+        '''<summary>
+        '''  Looks up a localized string similar to Remove &apos;Me&apos; qualification.
+        '''</summary>
+        Friend ReadOnly Property RemoveMeQualification() As String
+            Get
+                Return ResourceManager.GetString("RemoveMeQualification", resourceCulture)
             End Get
         End Property
         
@@ -2627,15 +2645,6 @@ Namespace Microsoft.CodeAnalysis.VisualBasic.VBFeaturesResources
         Friend ReadOnly Property SimplifyMemberAccess() As String
             Get
                 Return ResourceManager.GetString("SimplifyMemberAccess", resourceCulture)
-            End Get
-        End Property
-        
-        '''<summary>
-        '''  Looks up a localized string similar to Remove &apos;Me&apos; qualification.
-        '''</summary>
-        Friend ReadOnly Property SimplifyMeQualification() As String
-            Get
-                Return ResourceManager.GetString("SimplifyMeQualification", resourceCulture)
             End Get
         End Property
         

@@ -12,10 +12,17 @@ Imports Microsoft.CodeAnalysis.Editor.UnitTests.Workspaces
 Imports Microsoft.CodeAnalysis.Notification
 Imports Microsoft.CodeAnalysis.Options
 Imports Microsoft.CodeAnalysis.Rename
+Imports Microsoft.CodeAnalysis.Shared.Utilities
 Imports Microsoft.VisualStudio.Text
 
 Namespace Microsoft.CodeAnalysis.Editor.UnitTests.Rename
     Public Class InlineRenameTests
+        Private ReadOnly _outputHelper As Abstractions.ITestOutputHelper
+
+        Sub New(outputHelper As Abstractions.ITestOutputHelper)
+            _outputHelper = outputHelper
+        End Sub
+
         <WpfFact>
         <Trait(Traits.Feature, Traits.Features.Rename)>
         Public Async Function SimpleEditAndCommit() As Task
@@ -95,9 +102,7 @@ Namespace Microsoft.CodeAnalysis.Editor.UnitTests.Rename
             optionSet = optionSet.WithChangedOption(RenameOptions.RenameOverloads, renameOverloads)
             optionSet = optionSet.WithChangedOption(RenameOptions.RenameInStrings, renameInStrings)
             optionSet = optionSet.WithChangedOption(RenameOptions.RenameInComments, renameInComments)
-
-            Dim optionService = workspace.Services.GetService(Of IOptionService)()
-            optionService.SetOptions(optionSet)
+            workspace.Options = optionSet
 
             Dim session = StartSession(workspace)
 
@@ -635,7 +640,7 @@ End Class
         <Fact>
         <Trait(Traits.Feature, Traits.Features.Rename)>
         Public Sub RenameWithInheritenceCascadingWithClass()
-            Using result = RenameEngineResult.Create(
+            Using result = RenameEngineResult.Create(_outputHelper,
                     <Workspace>
                         <Project Language="C#" CommonReferences="true">
                             <Document>
@@ -1069,6 +1074,7 @@ class C
                     workspace.CurrentSolution.GetDocument(workspace.Documents.Single().Id),
                     Await actions.First().GetOperationsAsync(CancellationToken.None),
                     "unused",
+                    New ProgressTracker(),
                     CancellationToken.None)
 
                 ' CodeAction should be rejected

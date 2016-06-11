@@ -43,12 +43,12 @@ namespace Microsoft.CodeAnalysis.CSharp
         {
             var syntax = node.Syntax;
 
-            var rewrittenExpression = (BoundExpression)Visit(node.BoundExpression);
+            var rewrittenExpression = (BoundExpression)Visit(node.Expression);
             var rewrittenSections = VisitSwitchSections(node.SwitchSections);
 
             // EnC: We need to insert a hidden sequence point to handle function remapping in case 
             // the containing method is edited while methods invoked in the expression are being executed.
-            var rewrittenStatement = MakeSwitchStatement(syntax, AddConditionSequencePoint(rewrittenExpression, node), rewrittenSections, node.ConstantTargetOpt, node.InnerLocals, node.BreakLabel, node);
+            var rewrittenStatement = MakeSwitchStatement(syntax, AddConditionSequencePoint(rewrittenExpression, node), rewrittenSections, node.ConstantTargetOpt, node.InnerLocals, node.InnerLocalFunctions, node.BreakLabel, node);
 
             // Create the sequence point if generating debug info and
             // node is not compiler generated
@@ -75,6 +75,7 @@ namespace Microsoft.CodeAnalysis.CSharp
             ImmutableArray<BoundSwitchSection> rewrittenSections,
             LabelSymbol constantTargetOpt,
             ImmutableArray<LocalSymbol> locals,
+            ImmutableArray<LocalFunctionSymbol> localFunctions,
             GeneratedLabelSymbol breakLabel,
             BoundSwitchStatement oldNode)
         {
@@ -82,16 +83,18 @@ namespace Microsoft.CodeAnalysis.CSharp
             Debug.Assert((object)rewrittenExpression.Type != null);
 
             return rewrittenExpression.Type.IsNullableType() ?
-                MakeSwitchStatementWithNullableExpression(syntax, rewrittenExpression, rewrittenSections, constantTargetOpt, locals, breakLabel, oldNode) :
-                MakeSwitchStatementWithNonNullableExpression(syntax, rewrittenExpression, rewrittenSections, constantTargetOpt, locals, breakLabel, oldNode);
+                MakeSwitchStatementWithNullableExpression(syntax, rewrittenExpression, rewrittenSections, constantTargetOpt, locals, localFunctions, breakLabel, oldNode) :
+                MakeSwitchStatementWithNonNullableExpression(syntax, null, rewrittenExpression, rewrittenSections, constantTargetOpt, locals, localFunctions, breakLabel, oldNode);
         }
 
         private BoundStatement MakeSwitchStatementWithNonNullableExpression(
             CSharpSyntaxNode syntax,
+            BoundStatement preambleOpt,
             BoundExpression rewrittenExpression,
             ImmutableArray<BoundSwitchSection> rewrittenSections,
             LabelSymbol constantTargetOpt,
             ImmutableArray<LocalSymbol> locals,
+            ImmutableArray<LocalFunctionSymbol> localFunctions,
             GeneratedLabelSymbol breakLabel,
             BoundSwitchStatement oldNode)
         {
@@ -110,9 +113,11 @@ namespace Microsoft.CodeAnalysis.CSharp
             }
 
             return oldNode.Update(
-                boundExpression: rewrittenExpression,
+                loweredPreambleOpt: preambleOpt,
+                expression: rewrittenExpression,
                 constantTargetOpt: constantTargetOpt,
                 innerLocals: locals,
+                innerLocalFunctions: localFunctions,
                 switchSections: rewrittenSections,
                 breakLabel: breakLabel,
                 stringEquality: stringEquality);
@@ -124,6 +129,7 @@ namespace Microsoft.CodeAnalysis.CSharp
             ImmutableArray<BoundSwitchSection> rewrittenSections,
             LabelSymbol constantTargetOpt,
             ImmutableArray<LocalSymbol> locals,
+            ImmutableArray<LocalFunctionSymbol> localFunctions,
             GeneratedLabelSymbol breakLabel,
             BoundSwitchStatement oldNode)
         {
@@ -157,7 +163,6 @@ namespace Microsoft.CodeAnalysis.CSharp
                 condition: MakeNullCheck(exprSyntax, rewrittenExpression, BinaryOperatorKind.NullableNullEqual),
                 jumpIfTrue: true,
                 label: GetNullValueTargetSwitchLabel(rewrittenSections, breakLabel));
-            statementBuilder.Add(condGotoNullValueTargetLabel);
 
             // Rewrite the switch statement using nullable expression's underlying value as the switch expression.
 
@@ -167,12 +172,24 @@ namespace Microsoft.CodeAnalysis.CSharp
             rewrittenExpression = callGetValueOrDefault;
 
             // rewrite switch statement
-            BoundStatement rewrittenSwitchStatement = MakeSwitchStatementWithNonNullableExpression(syntax,
-                rewrittenExpression, rewrittenSections, constantTargetOpt, locals, breakLabel, oldNode);
+            BoundStatement rewrittenSwitchStatement = MakeSwitchStatementWithNonNullableExpression(
+                syntax,
+                condGotoNullValueTargetLabel,
+                rewrittenExpression, 
+                rewrittenSections, 
+                constantTargetOpt, 
+                locals, 
+                localFunctions, 
+                breakLabel, 
+                oldNode);
 
             statementBuilder.Add(rewrittenSwitchStatement);
 
-            return new BoundBlock(syntax, locals: (object)tempLocal == null ? ImmutableArray<LocalSymbol>.Empty : ImmutableArray.Create<LocalSymbol>(tempLocal), statements: statementBuilder.ToImmutableAndFree());
+            return new BoundBlock(
+                syntax,
+                locals: (object)tempLocal == null ? ImmutableArray<LocalSymbol>.Empty : ImmutableArray.Create<LocalSymbol>(tempLocal),
+                localFunctions: ImmutableArray<LocalFunctionSymbol>.Empty,
+                statements: statementBuilder.ToImmutableAndFree());
         }
 
         private static LabelSymbol GetNullValueTargetSwitchLabel(ImmutableArray<BoundSwitchSection> sections, GeneratedLabelSymbol breakLabel)
@@ -181,7 +198,7 @@ namespace Microsoft.CodeAnalysis.CSharp
 
             foreach (var section in sections)
             {
-                foreach (BoundSwitchLabel boundLabel in section.BoundSwitchLabels)
+                foreach (BoundSwitchLabel boundLabel in section.SwitchLabels)
                 {
                     var label = (SourceLabelSymbol)boundLabel.Label;
                     var labelConstant = label.SwitchCaseLabelConstant;
@@ -223,7 +240,7 @@ namespace Microsoft.CodeAnalysis.CSharp
 
         public override BoundNode VisitSwitchSection(BoundSwitchSection node)
         {
-            return node.Update(VisitList(node.BoundSwitchLabels), VisitList(node.Statements));
+            return node.Update(VisitList(node.SwitchLabels), VisitList(node.Statements));
         }
 
         private static int CountLabels(ImmutableArray<BoundSwitchSection> rewrittenSections)
@@ -231,7 +248,7 @@ namespace Microsoft.CodeAnalysis.CSharp
             int count = 0;
             foreach (var section in rewrittenSections)
             {
-                foreach (var boundLabel in section.BoundSwitchLabels)
+                foreach (var boundLabel in section.SwitchLabels)
                 {
                     if (boundLabel.Label.IdentifierNodeOrToken.Kind() == SyntaxKind.CaseSwitchLabel)
                     {

@@ -733,7 +733,7 @@ class C : A<B>
                         DkmEvaluationResultFlags.Expandable));
                 moreChildren = GetChildren(moreChildren[0]);
                 Verify(moreChildren,
-                    EvalResult("F", "null", "object", "new System.Linq.SystemCore_EnumerableDebugView<B>(o).Items[0].F"));
+                    EvalResult("F", "null", "object", "(new System.Linq.SystemCore_EnumerableDebugView<B>(o).Items[0]).F"));
             }
         }
 
@@ -1408,7 +1408,7 @@ class C : IEnumerable
             }
         }
 
-        [ConditionalFact(typeof(IsEnglishLocal))]
+        [Fact]
         [WorkItem(1145125, "http://vstfdevdiv:8080/DevDiv2/DevDiv/_workitems/edit/1145125")]
         [WorkItem(5666, "https://github.com/dotnet/roslyn/issues/5666")]
         public void GetEnumerableException()
@@ -1434,36 +1434,39 @@ class C
         get { throw new E(); }
     }
 }";
-            var runtime = new DkmClrRuntimeInstance(ReflectionUtilities.GetMscorlibAndSystemCore(GetAssembly(source)));
-            using (runtime.Load())
+            using (new EnsureEnglishUICulture())
             {
-                var type = runtime.GetType("C");
-                var value = CreateDkmClrValue(type.Instantiate(), type: type);
-                var evalResult = FormatResult("o", value);
-                Verify(evalResult,
-                    EvalResult("o", "{C}", "C", "o", DkmEvaluationResultFlags.Expandable));
-                var children = GetChildren(evalResult);
-                Verify(children,
-                    EvalResult(
-                        "P",
-                        "'o.P' threw an exception of type 'System.NotImplementedException'",
-                        "System.Collections.IEnumerable {System.NotImplementedException}",
-                        "o.P",
-                        DkmEvaluationResultFlags.Expandable | DkmEvaluationResultFlags.ReadOnly | DkmEvaluationResultFlags.ExceptionThrown),
-                    EvalResult(
-                        "Q",
-                        "'o.Q' threw an exception of type 'E'",
-                        "System.Collections.IEnumerable {E}",
-                        "o.Q",
-                        DkmEvaluationResultFlags.Expandable | DkmEvaluationResultFlags.ReadOnly | DkmEvaluationResultFlags.ExceptionThrown));
-                children = GetChildren(children[1]);
-                Verify(children[6],
-                    EvalResult(
-                        "Message",
-                        "\"Exception of type 'E' was thrown.\"",
-                        "string",
-                        null,
-                        DkmEvaluationResultFlags.RawString | DkmEvaluationResultFlags.ReadOnly));
+                var runtime = new DkmClrRuntimeInstance(ReflectionUtilities.GetMscorlibAndSystemCore(GetAssembly(source)));
+                using (runtime.Load())
+                {
+                    var type = runtime.GetType("C");
+                    var value = CreateDkmClrValue(type.Instantiate(), type: type);
+                    var evalResult = FormatResult("o", value);
+                    Verify(evalResult,
+                        EvalResult("o", "{C}", "C", "o", DkmEvaluationResultFlags.Expandable));
+                    var children = GetChildren(evalResult);
+                    Verify(children,
+                        EvalResult(
+                            "P",
+                            "'o.P' threw an exception of type 'System.NotImplementedException'",
+                            "System.Collections.IEnumerable {System.NotImplementedException}",
+                            "o.P",
+                            DkmEvaluationResultFlags.Expandable | DkmEvaluationResultFlags.ReadOnly | DkmEvaluationResultFlags.ExceptionThrown),
+                        EvalResult(
+                            "Q",
+                            "'o.Q' threw an exception of type 'E'",
+                            "System.Collections.IEnumerable {E}",
+                            "o.Q",
+                            DkmEvaluationResultFlags.Expandable | DkmEvaluationResultFlags.ReadOnly | DkmEvaluationResultFlags.ExceptionThrown));
+                    children = GetChildren(children[1]);
+                    Verify(children[6],
+                        EvalResult(
+                            "Message",
+                            "\"Exception of type 'E' was thrown.\"",
+                            "string",
+                            null,
+                            DkmEvaluationResultFlags.RawString | DkmEvaluationResultFlags.ReadOnly));
+                }
             }
         }
 
@@ -1696,7 +1699,7 @@ class C
                         "[0]",
                         "{{ x = 1, y = 1 }}",
                         "<>f__AnonymousType0<int, int>",
-                        $"new System.Linq.SystemCore_EnumerableDebugView<<>f__AnonymousType0<int, int>>({expr}).Items[0]",
+                        null,
                         DkmEvaluationResultFlags.Expandable));
 
                 name = expr + ", results";
@@ -1708,7 +1711,7 @@ class C
                         "[0]",
                         "{{ x = 1, y = 1 }}",
                         "<>f__AnonymousType0<int, int>",
-                        $"new System.Linq.SystemCore_EnumerableDebugView<<>f__AnonymousType0<int, int>>({expr}).Items[0]",
+                        null,
                         DkmEvaluationResultFlags.Expandable));
             }
         }

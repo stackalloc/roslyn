@@ -15,7 +15,7 @@ Namespace Microsoft.CodeAnalysis.Editor.VisualBasic.UnitTests.Completion.Complet
             MyBase.New(workspaceFixture)
         End Sub
 
-        Friend Overrides Function CreateCompletionProvider() As CompletionListProvider
+        Friend Overrides Function CreateCompletionProvider() As CompletionProvider
             Return New SymbolCompletionProvider()
         End Function
 
@@ -2307,6 +2307,12 @@ End Class
 ]]></Text>.Value
 
             Await VerifyItemExistsAsync(markup, "Configure")
+        End Function
+
+        <WorkItem(7648, "http://github.com/dotnet/roslyn/issues/7648")>
+        <Fact, Trait(Traits.Feature, Traits.Features.Completion)>
+        Public Async Function TestNothingMyBaseDotInScriptContext() As Task
+            Await VerifyItemIsAbsentAsync("MyBase.$$", "ToString", sourceCodeKind:=SourceCodeKind.Script)
         End Function
 
         <WorkItem(543580, "http://vstfdevdiv:8080/DevDiv2/DevDiv/_workitems/edit/543580")>
@@ -7067,6 +7073,80 @@ End Module
             Await VerifyItemExistsAsync(text, "Length")
         End Function
 
+        <WorkItem(153633, "https://devdiv.visualstudio.com/DefaultCollection/DevDiv/_workitems/edit/153633")>
+        <Fact, Trait(Traits.Feature, Traits.Features.Completion)>
+        Public Async Function LocalInForLoop() As Task
+            Dim text =
+<code><![CDATA[
+Module Program
+    Sub Main(args As String())
+        Dim x As Integer
+        For $$
+    End Sub
+End Module
+]]></code>.Value
+            Await VerifyItemExistsAsync(text, "x")
+        End Function
+
+        <WorkItem(153633, "https://devdiv.visualstudio.com/DefaultCollection/DevDiv/_workitems/edit/153633")>
+        <Fact, Trait(Traits.Feature, Traits.Features.Completion)>
+        Public Async Function ExcludeConstLocalInForLoop() As Task
+            Dim text =
+<code><![CDATA[
+Module Program
+    Sub Main(args As String())
+        Dim const x As Integer
+        For $$
+    End Sub
+End Module
+]]></code>.Value
+            Await VerifyItemIsAbsentAsync(text, "x")
+        End Function
+
+        <WorkItem(153633, "https://devdiv.visualstudio.com/DefaultCollection/DevDiv/_workitems/edit/153633")>
+        <Fact, Trait(Traits.Feature, Traits.Features.Completion)>
+        Public Async Function ExcludeConstFieldInForLoop() As Task
+            Dim text =
+<code><![CDATA[
+Class Program
+    Const x As Integer = 0
+    Sub Main(args As String())
+        For $$
+    End Sub
+End Class
+]]></code>.Value
+            Await VerifyItemIsAbsentAsync(text, "x")
+        End Function
+
+        <WorkItem(153633, "https://devdiv.visualstudio.com/DefaultCollection/DevDiv/_workitems/edit/153633")>
+        <Fact, Trait(Traits.Feature, Traits.Features.Completion)>
+        Public Async Function ExcludeReadOnlyFieldInForLoop() As Task
+            Dim text =
+<code><![CDATA[
+Class Program
+    ReadOnly x As Integer
+    Sub Main(args As String())
+        For $$
+    End Sub
+End Class
+]]></code>.Value
+            Await VerifyItemIsAbsentAsync(text, "x")
+        End Function
+
+        <WorkItem(153633, "https://devdiv.visualstudio.com/DefaultCollection/DevDiv/_workitems/edit/153633")>
+        <Fact, Trait(Traits.Feature, Traits.Features.Completion)>
+        Public Async Function FieldInForLoop() As Task
+            Dim text =
+<code><![CDATA[
+Class Program
+    Dim x As Integer
+    Sub Main(args As String())
+        For $$
+    End Sub
+End Class
+]]></code>.Value
+            Await VerifyItemExistsAsync(text, "x")
+        End Function
 
     End Class
 End Namespace

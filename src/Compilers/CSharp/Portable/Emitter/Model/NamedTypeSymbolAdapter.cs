@@ -270,9 +270,9 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
             Debug.Assert(((Cci.ITypeReference)this).AsTypeDefinition(context) != null);
             NamedTypeSymbol baseType = this.BaseTypeNoUseSiteDiagnostics;
 
-            if (this.TypeKind == TypeKind.Submission)
+            if (this.IsScriptClass)
             {
-                // although submission semantically doesn't have a base we need to emit one into metadata:
+                // although submission and scripts semantically doesn't have a base we need to emit one into metadata:
                 Debug.Assert((object)baseType == null);
                 baseType = this.ContainingAssembly.GetSpecialType(Microsoft.CodeAnalysis.SpecialType.System_Object);
             }
@@ -664,6 +664,12 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                     }
 
                     yield return method;
+
+                    // Replaced methods are not included in GetMembers().
+                    foreach (MethodSymbol replaced in method.GetReplacedMembers())
+                    {
+                        yield return replaced;
+                    }
                 }
             }
         }
@@ -826,8 +832,9 @@ namespace Microsoft.CodeAnalysis.CSharp.Symbols
                 // INamespaceTypeReference is a type contained in a namespace
                 // if this method is called for a nested type, we are in big trouble.
                 Debug.Assert(((Cci.ITypeReference)this).AsNamespaceTypeReference != null);
-                return this.ContainingSymbol.ToDisplayString(SymbolDisplayFormat.QualifiedNameOnlyFormat);
-            }
+
+                return this.ContainingNamespace.QualifiedName;
+           }
         }
 
         bool Cci.INamespaceTypeDefinition.IsPublic

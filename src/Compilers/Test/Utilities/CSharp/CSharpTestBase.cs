@@ -13,13 +13,14 @@ using System.Threading;
 using Microsoft.CodeAnalysis.CodeGen;
 using Microsoft.CodeAnalysis.CSharp.Symbols;
 using Microsoft.CodeAnalysis.CSharp.Symbols.Metadata.PE;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.CSharp.UnitTests;
 using Microsoft.CodeAnalysis.Test.Utilities;
 using Microsoft.CodeAnalysis.Text;
 using Roslyn.Utilities;
-using Xunit;
 using Roslyn.Test.Utilities;
 using Roslyn.Test.MetadataUtilities;
+using Xunit;
 
 namespace Microsoft.CodeAnalysis.CSharp.Test.Utilities
 {
@@ -126,9 +127,11 @@ namespace Microsoft.CodeAnalysis.CSharp.Test.Utilities
             Action<PEAssembly> assemblyValidator = null,
             Action<ModuleSymbol> symbolValidator = null,
             SignatureDescription[] expectedSignatures = null,
+            CSharpCompilationOptions options = null,
             bool verify = true)
         {
-            var options = (expectedOutput != null) ? TestOptions.ReleaseExe : TestOptions.ReleaseDll;
+            options = options ??
+                ((expectedOutput != null) ? TestOptions.ReleaseExe : TestOptions.ReleaseDll);
 
             var compilation = CreateExperimentalCompilationWithMscorlib45(source, additionalRefs, options);
 
@@ -389,6 +392,22 @@ namespace Microsoft.CodeAnalysis.CSharp.Test.Utilities
             return CreateCompilation(new[] { Parse(text, sourceFileName, TestOptions.ExperimentalParseOptions) }, refs, options, assemblyName);
         }
 
+        public static CSharpCompilation CreateExperimentalCompilationWithMscorlib45(
+            string[] texts,
+            IEnumerable<MetadataReference> references = null,
+            CSharpCompilationOptions options = null,
+            string assemblyName = "",
+            string sourceFileName = "")
+        {
+            var refs = new List<MetadataReference>();
+            if (references != null)
+            {
+                refs.AddRange(references);
+            }
+            refs.Add(MscorlibRef_v4_0_30316_17626);
+            return CreateCompilation((from text in texts select Parse(text, sourceFileName, TestOptions.ExperimentalParseOptions)).ToArray(), refs, options, assemblyName);
+        }
+
         public static CSharpCompilation CreateCompilationWithMscorlib45AndCSruntime(
             string text,
             CSharpCompilationOptions options = null,
@@ -502,6 +521,16 @@ namespace Microsoft.CodeAnalysis.CSharp.Test.Utilities
                 options = options.WithConcurrentBuild(false);
             }
 
+#if Test_IOperation_Interface
+            // Create a compilation for the purpose of verifying operation tree only,
+            // so this won't interfere with test.
+            var compilationForOperationWalking = CSharpCompilation.Create(
+                assemblyName == "" ? GetUniqueName() : assemblyName,
+                trees,
+                references,
+                options);
+            WalkOperationTree(compilationForOperationWalking);
+#endif
             return CSharpCompilation.Create(
                 assemblyName == "" ? GetUniqueName() : assemblyName,
                 trees,
@@ -517,12 +546,49 @@ namespace Microsoft.CodeAnalysis.CSharp.Test.Utilities
             CSharpParseOptions parseOptions = null)
         {
             var trees = (sources == null) ? null : sources.Select(s => Parse(s, options: parseOptions)).ToArray();
-            var c = CSharpCompilation.Create(identity.Name, options: options ?? TestOptions.ReleaseDll, references: references, syntaxTrees: trees);
+            var compilationOptions = options ?? TestOptions.ReleaseDll;
+
+#if Test_IOperation_Interface
+            // Create a compilation for the purpose of verifying operation tree only,
+            // so this won't interfere with test.
+            var compilationForOperationWalking = CSharpCompilation.Create(
+                identity.Name,
+                options: compilationOptions,
+                references: references,
+                syntaxTrees: trees);
+            WalkOperationTree(compilationForOperationWalking);
+#endif
+
+            var c = CSharpCompilation.Create(identity.Name, options: compilationOptions, references: references, syntaxTrees: trees);
             Assert.NotNull(c.Assembly); // force creation of SourceAssemblySymbol
 
             ((SourceAssemblySymbol)c.Assembly).lazyAssemblyIdentity = identity;
             return c;
         }
+
+#if Test_IOperation_Interface
+        private static void WalkOperationTree(CSharpCompilation compilation)
+        {
+            var operationWalker = TestOperationWalker.GetInstance();
+
+            foreach (var tree in compilation.SyntaxTrees)
+            {
+                var semanticModel = compilation.GetSemanticModel(tree);
+                var root = tree.GetRoot();
+
+                // TODO: check other operation root as well (property, etc.)
+                foreach (BaseMethodDeclarationSyntax methodNode in root.DescendantNodesAndSelf().OfType<BaseMethodDeclarationSyntax>())
+                {
+                    var bodyNode = methodNode.Body;
+                    if (bodyNode != null)
+                    {
+                        var operation = semanticModel.GetOperation(bodyNode);
+                        operationWalker.Visit(operation);
+                    }
+                }
+            }
+        }
+#endif
 
         public static CSharpCompilation CreateSubmissionWithExactReferences(
            string code,
@@ -866,6 +932,12 @@ namespace Microsoft.CodeAnalysis.CSharp.Test.Utilities
             visualizer.DumpMethod(sb, maxStack, ilBytes, localDefinitions, ehHandlerRegions, markers);
 
             return sb.ToString();
+        }
+
+        internal static string VisualizeIL(CompilationTestData testData, Func<MethodSymbol, bool> predicate)
+        {
+            var builder = testData.GetIL(m => predicate((MethodSymbol)m));
+            return ILBuilderVisualizer.ILBuilderToString(builder);
         }
 
         private static string GetContainingTypeMetadataName(IMethodSymbol method)

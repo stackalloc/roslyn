@@ -1,9 +1,11 @@
 ﻿// Copyright (c) Microsoft.  All Rights Reserved.  Licensed under the Apache License, Version 2.0.  See License.txt in the project root for license information.
 
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.CodeAnalysis.CodeGeneration;
 using Microsoft.CodeAnalysis.Editing;
 using Microsoft.CodeAnalysis.FindSymbols;
@@ -197,9 +199,7 @@ namespace Microsoft.CodeAnalysis.Shared.Extensions
                         TryGetValue(parameterToNewFieldMap, parameterName, out fieldName))
                     {
                         var assignExpression = factory.AssignmentStatement(
-                            factory.MemberAccessExpression(
-                                factory.ThisExpression(),
-                                factory.IdentifierName(fieldName)),
+                            factory.MemberAccessExpression(factory.ThisExpression(), factory.IdentifierName(fieldName)),
                             factory.IdentifierName(parameterName));
                         var statement = factory.ExpressionStatement(assignExpression);
                         yield return statement;
@@ -208,7 +208,7 @@ namespace Microsoft.CodeAnalysis.Shared.Extensions
             }
         }
 
-        public static IPropertySymbol OverrideProperty(
+        public static async Task<IPropertySymbol> OverridePropertyAsync(
             this SyntaxGenerator codeFactory,
             IPropertySymbol overriddenProperty,
             DeclarationModifiers modifiers,
@@ -225,7 +225,8 @@ namespace Microsoft.CodeAnalysis.Shared.Extensions
             // Implement an abstract property by throwing not implemented in accessors.
             if (overriddenProperty.IsAbstract)
             {
-                getBody = codeFactory.CreateThrowNotImplementStatement(document.Project.GetCompilationAsync(cancellationToken).WaitAndGetResult(cancellationToken));
+                var compilation = await document.Project.GetCompilationAsync(cancellationToken).ConfigureAwait(false);
+                getBody = codeFactory.CreateThrowNotImplementStatement(compilation);
                 setBody = getBody;
             }
             else if (overriddenProperty.IsIndexer() && document.Project.Language == LanguageNames.CSharp)
@@ -247,8 +248,8 @@ namespace Microsoft.CodeAnalysis.Shared.Extensions
             {
                 // Call accessors directly if C# overriding VB
                 if (document.Project.Language == LanguageNames.CSharp
-                    && SymbolFinder.FindSourceDefinitionAsync(overriddenProperty, document.Project.Solution, cancellationToken)
-                                    .WaitAndGetResult(CancellationToken.None).Language == LanguageNames.VisualBasic)
+                    && (await SymbolFinder.FindSourceDefinitionAsync(overriddenProperty, document.Project.Solution, cancellationToken).ConfigureAwait(false))
+                        .Language == LanguageNames.VisualBasic)
                 {
                     var getName = overriddenProperty.GetMethod != null ? overriddenProperty.GetMethod.Name : null;
                     var setName = overriddenProperty.SetMethod != null ? overriddenProperty.SetMethod.Name : null;
@@ -351,7 +352,7 @@ namespace Microsoft.CodeAnalysis.Shared.Extensions
                 name: overriddenEvent.Name);
         }
 
-        public static IMethodSymbol OverrideMethod(
+        public static async Task<IMethodSymbol> OverrideMethodAsync(
             this SyntaxGenerator codeFactory,
             IMethodSymbol overriddenMethod,
             DeclarationModifiers modifiers,
@@ -362,11 +363,12 @@ namespace Microsoft.CodeAnalysis.Shared.Extensions
             // Abstract: Throw not implemented
             if (overriddenMethod.IsAbstract)
             {
+                var compilation = await newDocument.Project.GetCompilationAsync(cancellationToken).ConfigureAwait(false);
                 return CodeGenerationSymbolFactory.CreateMethodSymbol(
                     overriddenMethod,
                     accessibility: overriddenMethod.ComputeResultantAccessibility(newContainingType),
                     modifiers: modifiers,
-                    statements: new[] { codeFactory.CreateThrowNotImplementStatement(newDocument.Project.GetCompilationAsync(cancellationToken).WaitAndGetResult(cancellationToken)) });
+                    statements: new[] { codeFactory.CreateThrowNotImplementStatement(compilation) });
             }
             else
             {

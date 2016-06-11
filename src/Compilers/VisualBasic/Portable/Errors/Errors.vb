@@ -1605,6 +1605,7 @@ Namespace Microsoft.CodeAnalysis.VisualBasic
         ERR_PublicKeyContainerFailure = 36981
 
         ERR_InvalidAssemblyCulture = 36982
+        ERR_EncUpdateFailedMissingAttribute = 36983
 
         ERR_CantAwaitAsyncSub1 = 37001
         ERR_ResumableLambdaInExpressionTree = 37050
@@ -1682,6 +1683,9 @@ Namespace Microsoft.CodeAnalysis.VisualBasic
         ERR_InvalidPathMap = 37253
         ERR_PublicSignNoKey = 37254
         ERR_TooManyUserStrings = 37255
+        ERR_PeWritingFailure = 37256
+
+        ERR_OptionMustBeAbsolutePath = 37257
 
         ERR_LastPlusOne
 
@@ -1882,7 +1886,8 @@ Namespace Microsoft.CodeAnalysis.VisualBasic
         'WRN_PDBConstantStringValueTooLong = 42363  we gave up on this warning. See comments in commonCompilation.Emit()
         WRN_ReturnTypeAttributeOnWriteOnlyProperty = 42364
 
-        WRN_UnreachableCode = 42365
+        ' // AVAILABLE 42365
+
         WRN_InvalidVersionFormat = 42366
         WRN_MainIgnored = 42367
         WRN_EmptyPrefixAndXmlnsLocalName = 42368
@@ -1950,5 +1955,7 @@ Namespace Microsoft.CodeAnalysis.VisualBasic
         FEATURE_PartialModules
         FEATURE_PartialInterfaces
         FEATURE_ImplementingReadonlyOrWriteonlyPropertyWithReadwrite
+        FEATURE_DigitSeparators
+        FEATURE_BinaryLiterals
     End Enum
 End Namespace
